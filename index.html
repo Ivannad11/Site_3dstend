@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ШТАБ — Интерактивный 3D-стенд</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+        html{-webkit-font-smoothing:antialiased;}
+        body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#080810;color:#ffffff;line-height:1.6;overflow-x:hidden;min-height:100vh;}
+        body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 5% 15%,rgba(0,232,157,0.07) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 95% 10%,rgba(15,40,90,0.12) 0%,transparent 55%),radial-gradient(ellipse 70% 30% at 50% 45%,rgba(0,232,157,0.05) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 10% 75%,rgba(10,30,70,0.10) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 85% 85%,rgba(0,232,157,0.06) 0%,transparent 55%),linear-gradient(180deg,#080810 0%,#090d16 15%,#0b1020 30%,#0a0e1a 50%,#0c1222 65%,#090d18 80%,#080810 100%);}
+        .nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:16px 0;background:rgba(8,8,16,0.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,0.06);}
+        .nav .container{display:flex;align-items:center;justify-content:space-between;}
+        .nav-logo{font-size:22px;font-weight:900;letter-spacing:5px;text-transform:uppercase;color:#fff;text-decoration:none;}
+        .nav-logo-dot{color:#00e89d;}
+        .nav-back{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;background:rgba(0,232,157,0.10);border:1px solid rgba(0,232,157,0.15);border-radius:8px;color:#00e89d;font-family:inherit;font-size:13px;font-weight:600;text-decoration:none;transition:all .3s;}
+        .nav-back:hover{background:rgba(0,232,157,0.18);border-color:rgba(0,232,157,0.3);}
+        .nav-back svg{width:16px;height:16px;}
+        .container{max-width:1200px;margin:0 auto;padding:0 24px;}
+        .hero{padding:120px 0 40px;text-align:center;position:relative;z-index:1;}
+        .hero-tag{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;background:rgba(0,232,157,0.10);border:1px solid rgba(0,232,157,0.15);border-radius:100px;font-size:12px;font-weight:600;color:#00e89d;margin-bottom:24px;}
+        .hero-tag::before{content:'';width:6px;height:6px;background:#00e89d;border-radius:50%;animation:pulse 2s ease-in-out infinite;}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+        .hero h1{font-size:clamp(32px,5vw,56px);font-weight:900;line-height:1.1;letter-spacing:-0.03em;margin-bottom:16px;}
+        .hero h1 span{color:#00e89d;}
+        .hero p{font-size:clamp(15px,1.8vw,18px);color:#c0c0d0;max-width:600px;margin:0 auto 32px;line-height:1.7;}
+        .hero-hints{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:20px;}
+        .hero-hint{display:flex;align-items:center;gap:6px;font-size:13px;color:#c0c0d0;}
+        .hero-hint svg{width:16px;height:16px;color:#00e89d;}
+        .stand-area{position:relative;z-index:1;padding:0 0 40px;}
+        .stand-canvas-wrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.06);background:#0a0a14;cursor:grab;max-width:1000px;margin:0 auto;}
+        .stand-canvas-wrap:active{cursor:grabbing;}
+        #standCanvas{width:100%;height:100%;display:block;}
+        .stand-tooltip{position:absolute;pointer-events:none;padding:12px 18px;background:rgba(8,8,16,0.94);backdrop-filter:blur(16px);border:1px solid rgba(0,232,157,0.25);border-radius:12px;font-size:13px;color:#fff;line-height:1.5;opacity:0;transition:opacity .25s;max-width:240px;z-index:10;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+        .stand-tooltip.visible{opacity:1;}
+        .stand-tooltip strong{color:#00e89d;display:block;margin-bottom:4px;font-size:14px;font-weight:700;}
+        .legend{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;padding:28px 0;position:relative;z-index:1;}
+        .legend-item{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#12121c;border:1px solid rgba(255,255,255,0.06);border-radius:10px;font-size:13px;color:#c0c0d0;transition:all .3s;cursor:default;}
+        .legend-item:hover{border-color:rgba(0,232,157,0.15);}
+        .legend-dot{width:10px;height:10px;border-radius:3px;display:block;}
+        .info-section{padding:40px 0 80px;position:relative;z-index:1;}
+        .info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+        .info-card{background:#12121c;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:24px 20px;transition:all .4s;text-align:center;}
+        .info-card:hover{border-color:rgba(0,232,157,0.15);transform:translateY(-3px);box-shadow:0 10px 32px rgba(0,0,0,.3);}
+        .info-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;margin:0 auto 14px;}
+        .info-card h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:6px;}
+        .info-card p{font-size:13px;color:#999;line-height:1.6;}
+        .cta-block{text-align:center;padding:0 0 80px;position:relative;z-index:1;}
+        .cta-block p{color:#c0c0d0;font-size:16px;margin-bottom:24px;line-height:1.7;}
+        .btn-main{display:inline-flex;align-items:center;gap:10px;padding:16px 36px;background:#00e89d;color:#080810;font-family:'Inter',-apple-system,sans-serif;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;transition:all .3s;text-decoration:none;}
+        .btn-main:hover{background:#40ffbe;transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,232,157,0.25);}
+        .btn-main svg{width:16px;height:16px;transition:transform .3s;}
+        .btn-main:hover svg{transform:translateX(4px);}
+        .footer{padding:24px 0;border-top:1px solid rgba(255,255,255,0.06);position:relative;z-index:1;text-align:center;}
+        .footer p{font-size:12px;color:#5e5e74;}
+        .footer a{color:#00e89d;text-decoration:none;}
+        .footer a:hover{text-decoration:underline;}
+        .controls{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5;}
+        .ctrl-btn{padding:7px 14px;background:rgba(8,8,16,0.8);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#c0c0d0;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all .3s;display:flex;align-items:center;gap:5px;}
+        .ctrl-btn:hover{border-color:#00e89d;color:#00e89d;}
+        .ctrl-btn.active{border-color:#00e89d;color:#00e89d;background:rgba(0,232,157,0.08);}
+        .ctrl-btn svg{width:14px;height:14px;}
+        @media(max-width:768px){.stand-canvas-wrap{aspect-ratio:1/1;border-radius:14px;}.info-grid{grid-template-columns:1fr 1fr;gap:12px;}.hero-hints{gap:12px;}.controls{bottom:10px;gap:5px;}.ctrl-btn{padding:6px 10px;font-size:11px;}}
+        @media(max-width:480px){.info-grid{grid-template-columns:1fr;}.legend{gap:10px;}.legend-item{padding:6px 12px;font-size:12px;}}
+    </style>
+</head>
+<body>
+<nav class="nav"><div class="container"><a href="#" class="nav-logo">ШТАБ<span class="nav-logo-dot">.</span></a><a href="https://project17495316.tilda.ws/" class="nav-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>На сайт</a></div></nav>
+
+<section class="hero"><div class="container">
+    <div class="hero-tag">Интерактивная демонстрация</div>
+    <h1>Покрутите <span>стенд</span></h1>
+    <p>Упрощённая 3D-модель выставочного стенда. Наведите на элементы, чтобы узнать, за что отвечает каждая зона.</p>
+    <div class="hero-hints">
+        <div class="hero-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 15l-2 5L9 9l11 4-5 2z"/></svg> Наведите для подсказок</div>
+        <div class="hero-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="M2 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="M12 18v4"/><path d="m16.24 16.24 2.83 2.83"/><path d="M18 12h4"/><path d="m16.24 7.76 2.83-2.83"/></svg> Зажмите и тяните</div>
+        <div class="hero-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/></svg> Скролл для зума</div>
+    </div>
+</div></section>
+
+<section class="stand-area"><div class="container">
+    <div class="stand-canvas-wrap" id="standWrap">
+        <canvas id="standCanvas"></canvas>
+        <div class="stand-tooltip" id="standTooltip"></div>
+        <div class="controls">
+            <button class="ctrl-btn active" id="btnRotate" onclick="toggleAutoRotate()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="M2 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="M12 18v4"/><path d="m16.24 16.24 2.83 2.83"/><path d="M18 12h4"/><path d="m16.24 7.76 2.83-2.83"/></svg> Авто</button>
+            <button class="ctrl-btn" onclick="resetView()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> Сброс</button>
+            <button class="ctrl-btn" onclick="toggleWireframe()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Каркас</button>
+        </div>
+    </div>
+</div></section>
+
+<div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#00e89d"></span> Видеостена</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span> Тач-панель</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#7c5ce0"></span> Стол-витрина</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#a855f7"></span> LED-подсветка</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Сервер</div>
+</div>
+
+<section class="info-section"><div class="container"><div class="info-grid">
+    <div class="info-card"><div class="info-icon" style="background:rgba(0,232,157,0.10);border:1px solid rgba(0,232,157,0.15);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00e89d" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div><h3>Видеостена</h3><p>Большой экран на задней стене. Транслирует рендеры, карты и презентации.</p></div>
+    <div class="info-card"><div class="info-icon" style="background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.15);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div><h3>Тач-панель</h3><p>Сенсорный экран перед столом. Управляет видеостеной и подсветкой.</p></div>
+    <div class="info-card"><div class="info-icon" style="background:rgba(124,92,224,0.10);border:1px solid rgba(124,92,224,0.15);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c5ce0" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3"/></svg></div><h3>Стол-витрина</h3><p>Интерактивный стол с макетом территории и LED-подсветкой.</p></div>
+    <div class="info-card"><div class="info-icon" style="background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.15);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></svg></div><h3>Единый сервер</h3><p>Один сервер связывает все устройства в единую систему.</p></div>
+</div></div></section>
+
+<section class="cta-block"><div class="container">
+    <p>Хотите такой стенд для своей выставки?</p>
+    <a href="https://project17495316.tilda.ws/#contact" class="btn-main">Обсудить проект <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+</div></section>
+
+<footer class="footer"><div class="container"><p><a href="https://project17495316.tilda.ws/">ШТАБ</a> — Агентство интерактивных решений. 2026</p></div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var container,canvas,tooltip,scene,camera,renderer;
+var interactiveObjects=[];
+var isDragging=false,prevX=0,prevY=0;
+var rotY=0.6,rotX=0.25,targetRotY=0.6,targetRotX=0.25;
+var targetZoom=14,currentZoom=14;
+var autoRotate=true,wireframeMode=false;
+var allMaterials=[];
+var raycaster,mouse,clock;
+var matLed,matScreen,matTableBody;
+
+function init(){
+    container=document.getElementById('standWrap');
+    canvas=document.getElementById('standCanvas');
+    tooltip=document.getElementById('standTooltip');
+    if(!container||!canvas||typeof THREE==='undefined')return;
+
+    var W=container.offsetWidth,H=container.offsetHeight;
+    scene=new THREE.Scene();
+    scene.fog=new THREE.FogExp2(0x0a0a14,0.006);
+
+    camera=new THREE.PerspectiveCamera(40,W/H,0.1,1000);
+    renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+    renderer.setSize(W,H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.setClearColor(0x0a0a14);
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+    /* СВЕТ */
+    scene.add(new THREE.AmbientLight(0xffffff,0.3));
+    var dir=new THREE.DirectionalLight(0xffffff,0.6);
+    dir.position.set(6,12,8);dir.castShadow=true;
+    dir.shadow.mapSize.width=2048;dir.shadow.mapSize.height=2048;
+    scene.add(dir);
+
+    var pG=new THREE.PointLight(0x00e89d,0.4,25);pG.position.set(0,6,2);scene.add(pG);
+    var pB=new THREE.PointLight(0x3b82f6,0.3,20);pB.position.set(-3,3,5);scene.add(pB);
+    var pP1=new THREE.PointLight(0x6366f1,0.7,10);pP1.position.set(0,0.3,2);scene.add(pP1);
+    var pP2=new THREE.PointLight(0xa855f7,0.5,10);pP2.position.set(2,0.3,2);scene.add(pP2);
+    var pBack=new THREE.PointLight(0x00e89d,0.3,15);pBack.position.set(0,3.5,-3);scene.add(pBack);
+
+    /* Сетка */
+    scene.add(new THREE.GridHelper(30,30,0x131320,0x131320));
+
+    /* МАТЕРИАЛЫ */
+    var matFloor=new THREE.MeshPhongMaterial({color:0x12121c});
+    var matWall=new THREE.MeshPhongMaterial({color:0x1a1a28});
+    matScreen=new THREE.MeshPhongMaterial({color:0x00e89d,emissive:0x00e89d,emissiveIntensity:0.45});
+    var matScreenFrame=new THREE.MeshPhongMaterial({color:0x0a0a10});
+    var matTouch=new THREE.MeshPhongMaterial({color:0x3b82f6,emissive:0x3b82f6,emissiveIntensity:0.35});
+    var matTouchFrame=new THREE.MeshPhongMaterial({color:0x1a1a28});
+    matTableBody=new THREE.MeshPhongMaterial({color:0x6366f1,emissive:0x6366f1,emissiveIntensity:0.22,transparent:true,opacity:0.55});
+    var matTableTop=new THREE.MeshPhongMaterial({color:0x151520,transparent:true,opacity:0.9});
+    var matTableBase=new THREE.MeshPhongMaterial({color:0xdddddd});
+    matLed=new THREE.MeshPhongMaterial({color:0xa855f7,emissive:0xa855f7,emissiveIntensity:0.6});
+    var matServer=new THREE.MeshPhongMaterial({color:0x1a1a28});
+    var matServerLedR=new THREE.MeshPhongMaterial({color:0xef4444,emissive:0xef4444,emissiveIntensity:0.8});
+    var matServerLedG=new THREE.MeshPhongMaterial({color:0x00ff00,emissive:0x00ff00,emissiveIntensity:1});
+    var matPole=new THREE.MeshPhongMaterial({color:0xbbbbbb});
+    var matCable=new THREE.LineBasicMaterial({color:0x00e89d,transparent:true,opacity:0.2});
+    var matDark=new THREE.MeshPhongMaterial({color:0x0e0e18});
+    var matMetal=new THREE.MeshPhongMaterial({color:0x3a3a4a,shininess:60});
+    var matBuilding=new THREE.MeshPhongMaterial({color:0x2a2a3a});
+    var matBuildingLight=new THREE.MeshPhongMaterial({color:0x4a4a5a});
+    var matRoad=new THREE.MeshPhongMaterial({color:0x222230});
+    var matGreen=new THREE.MeshPhongMaterial({color:0x1a3a2a});
+    var matWater=new THREE.MeshPhongMaterial({color:0x1a2a4a,transparent:true,opacity:0.7});
+    var matLogoText=new THREE.MeshPhongMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:0.4});
+    var matAccent=new THREE.MeshPhongMaterial({color:0x00e89d,emissive:0x00e89d,emissiveIntensity:0.3});
+
+    allMaterials=[matFloor,matWall,matScreen,matScreenFrame,matTouch,matTouchFrame,matTableBody,matTableTop,matTableBase,matLed,matServer,matPole,matDark,matMetal,matBuilding];
+
+    /* === ПЛАТФОРМА === */
+    mk(new THREE.BoxGeometry(14,0.06,10.5),matDark,0,0.03,0);
+    var fl=mk(new THREE.BoxGeometry(13.2,0.12,9.5),matFloor,0,0.12,0);fl.receiveShadow=true;
+
+    /* Бордюр платформы */
+    mk(new THREE.BoxGeometry(13.3,0.04,0.08),matAccent,0,0.19,4.75);
+    mk(new THREE.BoxGeometry(13.3,0.04,0.08),matAccent,0,0.19,-4.75);
+
+    /* === ЗАДНЯЯ СТЕНА === */
+    mk(new THREE.BoxGeometry(13.2,7,0.18),matWall,0,3.68,-4.65);
+
+    /* Боковые стенки — НЕПРОЗРАЧНЫЕ */
+    mk(new THREE.BoxGeometry(0.15,6,5),matWall,-6.55,3.18,-2.2);
+    mk(new THREE.BoxGeometry(0.15,6,5),matWall,6.55,3.18,-2.2);
+
+    /* Внутренние декор-панели на стенах */
+    mk(new THREE.BoxGeometry(0.04,4,3.5),new THREE.MeshPhongMaterial({color:0x1e1e30}), -6.35,3,  -2.5);
+    mk(new THREE.BoxGeometry(0.04,4,3.5),new THREE.MeshPhongMaterial({color:0x1e1e30}), 6.35,3, -2.5);
+
+    /* === ВИДЕОСТЕНА === */
+    mk(new THREE.BoxGeometry(9.5,5.5,0.28),matScreenFrame,0,3.9,-4.35);
+    var scr=mk(new THREE.BoxGeometry(9,5,0.06),matScreen,0,3.9,-4.18);
+    scr.userData={name:'Видеостена',desc:'LED-экран высокого разрешения на задней стене. Отображает рендеры объектов, карты территорий и презентации.'};
+    interactiveObjects.push(scr);
+
+    /* Рамка экрана — тонкие линии */
+    mk(new THREE.BoxGeometry(9.2,0.06,0.06),matMetal,0,6.42,-4.2);
+    mk(new THREE.BoxGeometry(9.2,0.06,0.06),matMetal,0,1.38,-4.2);
+    mk(new THREE.BoxGeometry(0.06,5.1,0.06),matMetal,-4.57,3.9,-4.2);
+    mk(new THREE.BoxGeometry(0.06,5.1,0.06),matMetal,4.57,3.9,-4.2);
+
+    /* Логотип на стене (выше экрана) */
+    mk(new THREE.BoxGeometry(2,0.12,0.04),matLogoText,0,6.75,-4.54);
+    mk(new THREE.BoxGeometry(0.3,0.3,0.04),matAccent,-1.4,6.75,-4.54);
+
+    /* === СТОЛ-ВИТРИНА === */
+    /* Белый цоколь */
+    mk(new THREE.BoxGeometry(7.5,0.18,4.2),matTableBase,0,0.27,1);
+
+    /* Светящийся корпус */
+    var tb=mk(new THREE.BoxGeometry(7.5,1.35,4.2),matTableBody,0,1.04,1);
+    tb.userData={name:'Стол-витрина',desc:'Интерактивный стол с масштабным макетом территории. LED-подсветка по периметру меняет цвет при выборе объекта.'};
+    interactiveObjects.push(tb);
+
+    /* Тёмная столешница */
+    mk(new THREE.BoxGeometry(7.6,0.08,4.3),matTableTop,0,1.76,1);
+
+    /* Бортики стола (непрозрачные, тёмные) */
+    mk(new THREE.BoxGeometry(7.6,0.25,0.1),matMetal,0,1.88,3.15);
+    mk(new THREE.BoxGeometry(7.6,0.25,0.1),matMetal,0,1.88,-1.15);
+    mk(new THREE.BoxGeometry(0.1,0.25,4.4),matMetal,-3.8,1.88,1);
+    mk(new THREE.BoxGeometry(0.1,0.25,4.4),matMetal,3.8,1.88,1);
+
+    /* === МАКЕТ ТЕРРИТОРИИ НА СТОЛЕ === */
+    /* Водоём */
+    mk(new THREE.BoxGeometry(2.5,0.02,1.5),matWater,2,1.82,1.8);
+
+    /* Зелёные зоны */
+    mk(new THREE.BoxGeometry(1.2,0.03,0.8),matGreen,-2.5,1.82,2.2);
+    mk(new THREE.BoxGeometry(0.8,0.03,1.2),matGreen,0.5,1.82,0.2);
+    mk(new THREE.BoxGeometry(1.5,0.03,0.6),matGreen,-1,1.82,2.5);
+
+    /* Дороги */
+    mk(new THREE.BoxGeometry(7,0.015,0.1),matRoad,0,1.82,1);
+    mk(new THREE.BoxGeometry(7,0.015,0.1),matRoad,0,1.82,2);
+    mk(new THREE.BoxGeometry(0.1,0.015,3.8),matRoad,0,1.82,1);
+    mk(new THREE.BoxGeometry(0.1,0.015,3.8),matRoad,-1.8,1.82,1);
+    mk(new THREE.BoxGeometry(0.1,0.015,3.8),matRoad,1.8,1.82,1);
+    mk(new THREE.BoxGeometry(0.1,0.015,3.8),matRoad,3.2,1.82,1);
+
+    /* Здания — разные размеры и типы */
+    var buildings=[
+        {x:-3,z:0.3,w:0.5,h:0.4,d:0.5,m:matBuilding},
+        {x:-2.5,z:0.5,w:0.35,h:0.55,d:0.35,m:matBuildingLight},
+        {x:-2.8,z:1.5,w:0.6,h:0.3,d:0.4,m:matBuilding},
+        {x:-1.3,z:0.4,w:0.4,h:0.6,d:0.4,m:matBuildingLight},
+        {x:-1,z:1.6,w:0.5,h:0.35,d:0.5,m:matBuilding},
+        {x:-0.5,z:2.5,w:0.3,h:0.45,d:0.3,m:matBuildingLight},
+        {x:0.5,z:0.5,w:0.45,h:0.5,d:0.45,m:matBuilding},
+        {x:1,z:1.5,w:0.35,h:0.4,d:0.35,m:matBuildingLight},
+        {x:1.5,z:2.5,w:0.5,h:0.3,d:0.4,m:matBuilding},
+        {x:2.5,z:0.3,w:0.4,h:0.65,d:0.4,m:matBuildingLight},
+        {x:2.8,z:2.5,w:0.55,h:0.35,d:0.5,m:matBuilding},
+        {x:3.2,z:1.3,w:0.3,h:0.5,d:0.3,m:matBuildingLight},
+        {x:-2,z:2.2,w:0.4,h:0.25,d:0.6,m:matBuilding},
+        {x:0,z:2.8,w:0.6,h:0.2,d:0.35,m:matBuilding},
+        {x:-3.2,z:2,w:0.35,h:0.45,d:0.35,m:matBuildingLight},
+        {x:2,z:0.8,w:0.25,h:0.55,d:0.25,m:matBuildingLight}
+    ];
+    for(var i=0;i<buildings.length;i++){
+        var b=buildings[i];
+        mk(new THREE.BoxGeometry(b.w,b.h,b.d),b.m,b.x,1.82+b.h/2,b.z);
+    }
+
+    /* Точечные огоньки на макете */
+    var dotMat=new THREE.MeshPhongMaterial({color:0xffcc00,emissive:0xffcc00,emissiveIntensity:0.8});
+    for(var j=0;j<8;j++){
+        mk(new THREE.SphereGeometry(0.04,6,6),dotMat,-3+Math.random()*6.5,1.84,0+Math.random()*3);
+    }
+
+    /* LED-полоски стола (низ) */
+    mk(new THREE.BoxGeometry(7.55,0.06,0.06),matLed,0,0.36,3.1);
+    mk(new THREE.BoxGeometry(7.55,0.06,0.06),matLed,0,0.36,-1.1);
+    mk(new THREE.BoxGeometry(0.06,0.06,4.25),matLed,-3.75,0.36,1);
+    mk(new THREE.BoxGeometry(0.06,0.06,4.25),matLed,3.75,0.36,1);
+
+    /* LED-полоски стола (верх) */
+    mk(new THREE.BoxGeometry(7.55,0.04,0.04),matLed,0,1.72,3.1);
+    mk(new THREE.BoxGeometry(7.55,0.04,0.04),matLed,0,1.72,-1.1);
+
+    /* === ТАЧ-ПАНЕЛЬ — ПЕРЕД СТОЛОМ === */
+    /* Основание */
+    mk(new THREE.CylinderGeometry(0.3,0.3,0.05,16),matPole,0,0.2,4.5);
+
+    /* Стойка */
+    mk(new THREE.CylinderGeometry(0.07,0.09,1.1,12),matPole,0,0.8,4.5);
+
+    /* Наклонное крепление */
+    var armGeo=new THREE.BoxGeometry(0.06,0.5,0.06);
+    var arm=mk(armGeo,matPole,0,1.5,4.35);
+    arm.rotation.x=0.3;
+
+    /* Корпус */
+    mk(new THREE.BoxGeometry(1.5,0.1,1),matTouchFrame,0,1.65,4.3);
+
+    /* Экран */
+    var touchScr=mk(new THREE.BoxGeometry(1.4,0.05,0.9),matTouch,0,1.71,4.3);
+    touchScr.rotation.x=-0.2;
+    touchScr.userData={name:'Тач-панель',desc:'Сенсорный экран перед столом-витриной. Посетитель выбирает объект на карте — видеостена и подсветка синхронизируются.'};
+    interactiveObjects.push(touchScr);
+
+    /* Логотип на тач */
+    mk(new THREE.BoxGeometry(0.5,0.02,0.06),matLogoText,0,1.73,4.6);
+
+    /* === СЕРВЕР === */
+    var srv=mk(new THREE.BoxGeometry(0.7,2,0.5),matServer,5.8,1.18,-3.8);
+    srv.userData={name:'Единый сервер',desc:'Скрытый за стеной сервер. Управляет видеостеной, тач-панелью и LED-подсветкой как единой системой.'};
+    interactiveObjects.push(srv);
+
+    mk(new THREE.BoxGeometry(0.06,0.06,0.02),matServerLedR,5.8,1.9,-3.54);
+    mk(new THREE.BoxGeometry(0.06,0.06,0.02),matServerLedG,5.8,1.75,-3.54);
+    mk(new THREE.BoxGeometry(0.06,0.06,0.02),matServerLedG,5.8,1.6,-3.54);
+
+    /* LED подсветка (для тултипа) */
+    var ledObj=mk(new THREE.BoxGeometry(0.06,0.06,4.25),matLed,-3.75,0.36,1);
+    ledObj.userData={name:'LED-подсветка',desc:'Динамическая подсветка стола-витрины. Меняет цвет и интенсивность при навигации по объектам на тач-панели.'};
+    interactiveObjects.push(ledObj);
+
+    /* === КАБЕЛИ === */
+    cable({x:5.8,y:0.15,z:-3.8},{x:0,y:1.38,z:-4.2},matCable);
+    cable({x:5.8,y:0.15,z:-3.8},{x:0,y:0.2,z:4.5},matCable);
+    cable({x:5.8,y:0.15,z:-3.8},{x:0,y:0.27,z:1},matCable);
+
+    /* Козырёк */
+    mk(new THREE.BoxGeometry(13.3,0.1,2),matScreenFrame,0,7.0,-3.8);
+    mk(new THREE.BoxGeometry(13.2,0.05,0.05),matLed,0,6.96,-2.85);
+
+    /* Споты на козырьке */
+    for(var s=-4;s<=4;s+=2){
+        mk(new THREE.CylinderGeometry(0.12,0.08,0.15,8),matMetal,s,6.9,-3.2);
+        var spot=new THREE.SpotLight(0xffffff,0.15,8,0.5,0.5);
+        spot.position.set(s,6.85,-3.2);
+        spot.target.position.set(s,0,0);
+        scene.add(spot);scene.add(spot.target);
+    }
+
+    /* Отражение */
+    var reflMat=new THREE.MeshPhongMaterial({color:0x6366f1,emissive:0x6366f1,emissiveIntensity:0.1,transparent:true,opacity:0.2});
+    mk(new THREE.BoxGeometry(9,0.005,6),reflMat,0,0.07,1.5);
+
+    /* СОБЫТИЯ */
+    raycaster=new THREE.Raycaster();
+    mouse=new THREE.Vector2();
+
+    container.addEventListener('mousedown',function(e){isDragging=true;autoRotate=false;document.getElementById('btnRotate').classList.remove('active');prevX=e.clientX;prevY=e.clientY;});
+    container.addEventListener('touchstart',function(e){isDragging=true;autoRotate=false;document.getElementById('btnRotate').classList.remove('active');prevX=e.touches[0].clientX;prevY=e.touches[0].clientY;},{passive:true});
+    window.addEventListener('mouseup',function(){isDragging=false;});
+    window.addEventListener('touchend',function(){isDragging=false;});
+    container.addEventListener('mousemove',function(e){
+        if(isDragging){
+            /* ИНВЕРТИРОВАНО: лево-право */
+            targetRotY-=(e.clientX-prevX)*0.008;
+            targetRotX+=(e.clientY-prevY)*0.005;
+            targetRotX=Math.max(-0.2,Math.min(0.7,targetRotX));
+            prevX=e.clientX;prevY=e.clientY;
+        }
+        checkHover(e.clientX,e.clientY);
+    });
+    container.addEventListener('touchmove',function(e){
+        if(isDragging){
+            /* ИНВЕРТИРОВАНО */
+            targetRotY-=(e.touches[0].clientX-prevX)*0.008;
+            targetRotX+=(e.touches[0].clientY-prevY)*0.005;
+            targetRotX=Math.max(-0.2,Math.min(0.7,targetRotX));
+            prevX=e.touches[0].clientX;prevY=e.touches[0].clientY;
+        }
+    },{passive:true});
+    container.addEventListener('mouseleave',function(){tooltip.classList.remove('visible');});
+    container.addEventListener('wheel',function(e){e.preventDefault();targetZoom+=e.deltaY*0.01;targetZoom=Math.max(7,Math.min(22,targetZoom));},{passive:false});
+    window.addEventListener('resize',function(){var w=container.offsetWidth,h=container.offsetHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);});
+
+    animate();
+}
+
+function mk(geo,mat,x,y,z){var m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;scene.add(m);return m;}
+function cable(a,b,mat){var pts=[new THREE.Vector3(a.x,a.y,a.z),new THREE.Vector3(a.x,0.06,a.z),new THREE.Vector3(b.x,0.06,b.z),new THREE.Vector3(b.x,b.y,b.z)];scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),mat));}
+
+function checkHover(cx,cy){
+    var rect=container.getBoundingClientRect();
+    mouse.x=((cx-rect.left)/rect.width)*2-1;
+    mouse.y=-((cy-rect.top)/rect.height)*2+1;
+    raycaster.setFromCamera(mouse,camera);
+    var hits=raycaster.intersectObjects(interactiveObjects);
+    if(hits.length>0&&hits[0].object.userData.name){
+        var o=hits[0].object;
+        tooltip.innerHTML='<strong>'+o.userData.name+'</strong>'+o.userData.desc;
+        tooltip.classList.add('visible');
+        var tx=cx-rect.left+16,ty=cy-rect.top-10;
+        if(tx+250>rect.width)tx=cx-rect.left-250;
+        if(ty+90>rect.height)ty=cy-rect.top-90;
+        tooltip.style.left=tx+'px';tooltip.style.top=ty+'px';
+    }else{tooltip.classList.remove('visible');}
+}
+
+function animate(){
+    requestAnimationFrame(animate);
+    if(!clock)clock=new THREE.Clock();
+    var t=clock.getElapsedTime();
+    if(autoRotate)targetRotY+=0.002;
+    rotY+=(targetRotY-rotY)*0.05;
+    rotX+=(targetRotX-rotX)*0.05;
+    currentZoom+=(targetZoom-currentZoom)*0.07;
+    camera.position.x=Math.sin(rotY)*currentZoom*Math.cos(rotX);
+    camera.position.z=Math.cos(rotY)*currentZoom*Math.cos(rotX);
+    camera.position.y=Math.sin(rotX)*currentZoom*0.5+4;
+    camera.lookAt(0,2,0);
+
+    matLed.emissiveIntensity=0.4+Math.sin(t*2)*0.25;
+    matScreen.emissiveIntensity=0.35+Math.sin(t*1.2)*0.2;
+    matTableBody.emissiveIntensity=0.18+Math.sin(t*1.8)*0.08;
+    matTableBody.opacity=0.5+Math.sin(t*1.8)*0.08;
+
+    renderer.render(scene,camera);
+}
+
+function toggleAutoRotate(){autoRotate=!autoRotate;document.getElementById('btnRotate').classList.toggle('active',autoRotate);}
+function resetView(){targetRotY=0.6;targetRotX=0.25;targetZoom=14;autoRotate=true;document.getElementById('btnRotate').classList.add('active');}
+function toggleWireframe(){wireframeMode=!wireframeMode;allMaterials.forEach(function(m){m.wireframe=wireframeMode;});}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
